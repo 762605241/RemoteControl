@@ -1,5 +1,10 @@
 package com.lxl.ui;
 
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
+import java.awt.event.WindowListener;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.File;
@@ -40,10 +45,10 @@ public class MainUI extends JFrame {
 		getContentPane().setLayout(null);
 
 		this.setTitle("远程控制");
-		
+
 		this.setSize(500, 300);
 
-		this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+		// this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
 		JLabel lblid = new JLabel("\u672C\u673AID");
 		lblid.setBounds(39, 45, 86, 15);
@@ -96,8 +101,31 @@ public class MainUI extends JFrame {
 	}
 
 	private void bind() {
-		// TODO Auto-generated method stub
+		// 关闭事件
+		this.addWindowListener(new WindowAdapter() {
+			@Override
+			public void windowClosing(WindowEvent e) {
+				super.windowClosing(e);
+				System.exit(0);
+			}
+			@Override
+			public void windowClosed(WindowEvent e) {
+				super.windowClosed(e);
+			}
+		});
+		// 验证码刷新按钮事件
+		refresh.addActionListener(refreshCode());
+	}
 
+	private ActionListener refreshCode() {
+		ActionListener a = new ActionListener() {
+			
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				getCode().setText(getRandomCode());
+			}
+		};
+		return a;
 	}
 
 	private void initMainUIData() {
