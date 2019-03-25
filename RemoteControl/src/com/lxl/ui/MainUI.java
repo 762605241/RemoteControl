@@ -1,23 +1,34 @@
 package com.lxl.ui;
 
+import java.awt.AWTException;
+import java.awt.Dimension;
+import java.awt.Rectangle;
+import java.awt.Robot;
+import java.awt.Toolkit;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
-import java.awt.event.WindowListener;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.ObjectOutputStream;
 import java.io.OutputStream;
+import java.io.OutputStreamWriter;
 import java.net.InetAddress;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.net.UnknownHostException;
 import java.util.Date;
 import java.util.Properties;
 
+import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
@@ -39,6 +50,15 @@ public class MainUI extends JFrame {
 	private JButton set;
 
 	final String configPath = "src/com/lxl/config/config.properties";
+	private JTextField passwd;
+
+	public JTextField getPasswd() {
+		return passwd;
+	}
+
+	public void setPasswd(JTextField passwd) {
+		this.passwd = passwd;
+	}
 
 	// 初始化主界面
 	public MainUI() {
@@ -55,7 +75,7 @@ public class MainUI extends JFrame {
 		getContentPane().add(lblid);
 
 		JLabel lblid_1 = new JLabel("\u8FDC\u7A0B\u4E3B\u673AID");
-		lblid_1.setBounds(39, 102, 86, 15);
+		lblid_1.setBounds(39, 85, 86, 15);
 		getContentPane().add(lblid_1);
 
 		localID = new JLabel("123456789");
@@ -63,7 +83,7 @@ public class MainUI extends JFrame {
 		getContentPane().add(localID);
 
 		remoteID = new JTextField();
-		remoteID.setBounds(191, 99, 120, 21);
+		remoteID.setBounds(191, 82, 120, 21);
 		getContentPane().add(remoteID);
 		remoteID.setColumns(10);
 
@@ -86,18 +106,36 @@ public class MainUI extends JFrame {
 		JButton set = new JButton("\u8BBE\u7F6E");
 		set.setBounds(253, 208, 93, 23);
 		getContentPane().add(set);
+		
+		passwd = new JTextField();
+		passwd.setBounds(191, 113, 120, 21);
+		getContentPane().add(passwd);
+		passwd.setColumns(10);
+		
+		JLabel label = new JLabel("密码");
+		label.setBounds(39, 116, 54, 15);
+		getContentPane().add(label);
 
 		// 初始化页面数据
 		initMainUIData();
 		// 绑定控件事件
 		bind();
-		// 开启本机服务器
-		startLocalServer();
 	}
 
-	private void startLocalServer() {
-		// TODO Auto-generated method stub
-
+	private static void startLocalServer() {
+		try {
+			ServerSocket server = new ServerSocket(8888);
+			Socket socket = null;
+			System.out.println("服务器启动");
+			while (true) {
+				socket = server.accept();
+				System.out.println("已连接" + socket.getInetAddress().getHostAddress());
+				ServerThread clientService = new ServerThread(socket);
+				clientService.start();
+			}
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 	}
 
 	private void bind() {
@@ -108,18 +146,112 @@ public class MainUI extends JFrame {
 				super.windowClosing(e);
 				System.exit(0);
 			}
+
 			@Override
 			public void windowClosed(WindowEvent e) {
 				super.windowClosed(e);
 			}
 		});
 		// 验证码刷新按钮事件
-		refresh.addActionListener(refreshCode());
+		refresh.addActionListener(refreshListener());
+		// 连接事件
+		connect.addActionListener(connectListener());
 	}
 
-	private ActionListener refreshCode() {
+	private ActionListener connectListener() {
 		ActionListener a = new ActionListener() {
-			
+
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				tryToConnect();
+			}
+
+		};
+		return a;
+	}
+
+	private void tryToConnect() {
+		Dimension d = Toolkit.getDefaultToolkit().getScreenSize();
+		Robot robot = null;
+		ImageIcon img = null;
+		Socket socket = null;
+		try {
+			socket = new Socket(getRemoteID().getText(), 8888);
+			robot = new Robot();
+			while (true) {
+				img = new ImageIcon(robot.createScreenCapture(new Rectangle(0, 0, (int) d.getWidth(), (int) d.getHeight())));// 截取屏幕
+				ObjectOutputStream oos = new ObjectOutputStream(socket.getOutputStream());
+				oos.writeObject(img);
+				oos.flush();
+			}
+		} catch (AWTException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+
+	
+//		// 1、获取验证码、设置密码、用户名及密码
+//		String strCode = code.getText();
+//		File f = new File(configPath);
+//		String setPassword = null;
+//		Properties prop = new Properties();
+//		InputStream is = null;
+//		try {
+//			is = new BufferedInputStream(new FileInputStream(f));
+//			prop.load(is);
+//			setPassword = prop.getProperty("setPassword");
+//		} catch (FileNotFoundException e) {
+//			e.printStackTrace();
+//		} catch (IOException e) {
+//			e.printStackTrace();
+//		} finally {
+//			if (is != null) {
+//				try {
+//					is.close();
+//				} catch (IOException e) {
+//					e.printStackTrace();
+//				}
+//			}
+//		}
+//		String strRemoteID = remoteID.getText();
+//		String pw = null;
+//		BufferedWriter bw = null;
+//		Socket s = null;
+//		if (strRemoteID != null && !strRemoteID.equals("")) {
+//			pw = (setPassword != null && !setPassword.equals("")) ? setPassword : strCode;
+//			// 启动客户端 尝试连接
+//			try {
+//				s = new Socket(strRemoteID, 8888);
+//				bw = new BufferedWriter(new OutputStreamWriter(s.getOutputStream()));
+//				bw.write("confirm:" + pw);
+//				bw.flush();
+//			} catch (UnknownHostException e) {
+//				e.printStackTrace();
+//			} catch (IOException e) {
+//				e.printStackTrace();
+//			} finally {
+//				if (bw != null) {
+//					try {
+//						bw.close();
+//					} catch (IOException e) {
+//						e.printStackTrace();
+//					}
+//				}
+//				if (s != null) {
+//					try {
+//						s.close();
+//					} catch (IOException e) {
+//						e.printStackTrace();
+//					}
+//				}
+//			}
+//		}
+	}
+
+	private ActionListener refreshListener() {
+		ActionListener a = new ActionListener() {
+
 			@Override
 			public void actionPerformed(ActionEvent e) {
 				getCode().setText(getRandomCode());
@@ -130,8 +262,6 @@ public class MainUI extends JFrame {
 
 	private void initMainUIData() {
 
-		String code = getRandomCode();
-		getCode().setText(code);
 
 		File f = new File(configPath);
 		Properties prop = new Properties();
@@ -142,10 +272,6 @@ public class MainUI extends JFrame {
 			if (!f.exists() || f.length() == 0) {
 				f.createNewFile();
 				os = new BufferedOutputStream(new FileOutputStream(f));
-
-				prop.setProperty("username", "");
-				prop.setProperty("password", "");
-
 				localID = InetAddress.getLocalHost().getHostAddress();
 				prop.setProperty("localHostID", localID);
 				// 根据ip生成特定切唯一的ID
@@ -154,11 +280,15 @@ public class MainUI extends JFrame {
 				prop.setProperty("randomCode",
 						"a,b,c,d,e,f,g,h,i,g,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S,T,U,V,W,X,Y,Z,1,2,3,4,5,6,7,8,9,0");
 				prop.store(os, new Date().toString());
+				prop.setProperty("code", getRandomCode());
+				prop.store(os, new Date().toString());
+				getCode().setText(getRandomCode());
 			} else {
 				is = new BufferedInputStream(new FileInputStream(f));
 				prop.load(is);
 				localID = prop.getProperty("localHostID");
 				getLocalID().setText(localID);
+				getCode().setText(getRandomCode());
 			}
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -169,6 +299,7 @@ public class MainUI extends JFrame {
 		File f = new File(configPath);
 		Properties prop = new Properties();
 		InputStream is = null;
+		OutputStream os = null;
 		StringBuilder sb = new StringBuilder();
 		try {
 			is = new BufferedInputStream(new FileInputStream(f));
@@ -178,10 +309,28 @@ public class MainUI extends JFrame {
 			for (; i < 6; i++) {
 				sb.append(codes[(int) (Math.random() * 62)]);
 			}
+			os = new BufferedOutputStream(new FileOutputStream(f));
+			prop.setProperty("code", sb.toString());
+			prop.store(os, new Date().toString());
 		} catch (FileNotFoundException e) {
 			e.printStackTrace();
 		} catch (IOException e) {
 			e.printStackTrace();
+		} finally {
+			if (os != null) {
+				try {
+					os.close();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			}			
+			if (is != null) {
+				try {
+					is.close();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			}
 		}
 		return sb.toString();
 	}
@@ -237,5 +386,7 @@ public class MainUI extends JFrame {
 	public static void main(String[] args) {
 		MainUI mainUI = new MainUI();
 		mainUI.setVisible(true);
+		// 开启本机服务器
+		startLocalServer();
 	}
 }
