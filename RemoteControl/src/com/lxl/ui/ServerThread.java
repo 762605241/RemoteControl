@@ -13,26 +13,27 @@ import javax.swing.JLabel;
 public class ServerThread extends Thread {
 	final String configPath = "src/com/lxl/config/config.properties";
 	Socket socket = null;
-	Dimension d = Toolkit.getDefaultToolkit().getScreenSize();
-
+	static Dimension d = Toolkit.getDefaultToolkit().getScreenSize();
+	static JLabel label = new JLabel();
+	static JFrame controllerUI = new JFrame();
+	static {
+		controllerUI.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+		controllerUI.setSize(d.getSize());
+		controllerUI.add(label);
+		controllerUI.setVisible(true);
+	}
 	public ServerThread(Socket socket) {
 		this.socket = socket;
 	}
 
 	public void run() {
-		JFrame controllerUI = new JFrame();
-		Dimension d = Toolkit.getDefaultToolkit().getScreenSize();
-		controllerUI.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-		controllerUI.setSize(d.getSize());
-		JLabel label = new JLabel();
+		
 		ImageIcon img = null;
 		ObjectInputStream ois = null;
-		controllerUI.setVisible(true);
 		try {
 			ois = new ObjectInputStream(socket.getInputStream());
 			img = (ImageIcon) ois.readObject();
 			label.setIcon(img);
-			controllerUI.add(label);
 		} catch (IOException e) {
 			e.printStackTrace();
 		} catch (ClassNotFoundException e) {

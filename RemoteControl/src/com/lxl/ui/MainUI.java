@@ -127,6 +127,7 @@ public class MainUI extends JFrame {
 			ServerSocket server = new ServerSocket(8888);
 			Socket socket = null;
 			System.out.println("服务器启动");
+			// 开启两个线程，1输出鼠标键盘时间、2输出页面
 			while (true) {
 				socket = server.accept();
 				System.out.println("已连接" + socket.getInetAddress().getHostAddress());
@@ -176,9 +177,10 @@ public class MainUI extends JFrame {
 		ImageIcon img = null;
 		Socket socket = null;
 		try {
-			socket = new Socket(getRemoteID().getText(), 8888);
-			robot = new Robot();
+			// 开启两个线程 1接收鼠标事件 2接受键盘事件
 			while (true) {
+				socket = new Socket(getRemoteID().getText(), 8888);
+				robot = new Robot();
 				img = new ImageIcon(robot.createScreenCapture(new Rectangle(0, 0, (int) d.getWidth(), (int) d.getHeight())));// 截取屏幕
 				ObjectOutputStream oos = new ObjectOutputStream(socket.getOutputStream());
 				oos.writeObject(img);
