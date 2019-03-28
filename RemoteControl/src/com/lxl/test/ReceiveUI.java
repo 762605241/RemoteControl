@@ -37,11 +37,10 @@ public class ReceiveUI {
 	}
 
 	public static void main(String[] args) {
-
+		
 		label.addMouseWheelListener(new MouseWheelListener() {
 			@Override
 			public void mouseWheelMoved(MouseWheelEvent e) {
-				System.out.println(e.toString()); // 滚轮事件
 				if (socket != null) {
 					new Thread(new Runnable() {
 						@Override
@@ -71,8 +70,7 @@ public class ReceiveUI {
 			}
 		});
 		label.addMouseListener(new MouseAdapter() {
-			private void sendOrder(MouseEvent e) { //
-				System.out.println(e.toString());
+			private void sendOrder(MouseEvent e) { 
 				if (socket != null) {
 					new Thread(new Runnable() {
 
@@ -100,14 +98,8 @@ public class ReceiveUI {
 					}).start();
 				}
 			}
-
 			@Override
 			public void mouseClicked(MouseEvent e) { // 单击事件
-				sendOrder(e);
-			}
-
-			@Override
-			public void mouseDragged(MouseEvent e) { // 点击拖动事件
 				sendOrder(e);
 			}
 
@@ -115,25 +107,19 @@ public class ReceiveUI {
 			public void mouseExited(MouseEvent e) { // 离开组件事件
 				sendOrder(e);
 			}
-
-			@Override
-			public void mouseMoved(MouseEvent e) { // 移动事件
-				sendOrder(e);
-			}
-
 		});
-/**
-		controllerUI.addKeyListener(new KeyAdapter() {
-		创建另一个线程，监听键盘事件。
-			private void sendOrder(KeyEvent e) {
-				System.out.println(e.toString());
+		label.addMouseMotionListener(new MouseAdapter() {
+			private void sendOrder(MouseEvent e) { 
 				if (socket != null) {
 					new Thread(new Runnable() {
+
 						@Override
 						public void run() {
 							ObjectOutputStream oos = null;
+							Socket order = null;
 							try {
-								oos = new ObjectOutputStream(socket.getOutputStream());
+								order = new Socket("192.168.31.135", 8888);
+								oos = new ObjectOutputStream(order.getOutputStream());
 								oos.writeObject(e);
 								oos.flush();
 							} catch (IOException e1) {
@@ -152,24 +138,37 @@ public class ReceiveUI {
 				}
 			}
 			@Override
-			public void keyPressed(KeyEvent e) {
-				// 按下事件
+			public void mouseDragged(MouseEvent e) { // 点击拖动事件?
 				sendOrder(e);
 			}
 
 			@Override
-			public void keyReleased(KeyEvent e) {
-				// 释放事件
+			public void mouseMoved(MouseEvent e) { // 移动事件?
 				sendOrder(e);
 			}
 
-			@Override
-			public void keyTyped(KeyEvent e) {
-				// 键入事件（按下，再释放）
-				sendOrder(e);
-			}
 		});
-		*/
+		/**
+		 * controllerUI.addKeyListener(new KeyAdapter() { 创建另一个线程，监听键盘事件。
+		 * private void sendOrder(KeyEvent e) {
+		 * System.out.println(e.toString()); if (socket != null) { new
+		 * Thread(new Runnable() {
+		 * 
+		 * @Override public void run() { ObjectOutputStream oos = null; try {
+		 *           oos = new ObjectOutputStream(socket.getOutputStream());
+		 *           oos.writeObject(e); oos.flush(); } catch (IOException e1) {
+		 *           e1.printStackTrace(); } finally { if (oos != null) { try {
+		 *           oos.close(); } catch (IOException e1) {
+		 *           e1.printStackTrace(); } } } } }).start(); } }
+		 * @Override public void keyPressed(KeyEvent e) { // 按下事件 sendOrder(e);
+		 *           }
+		 * 
+		 * @Override public void keyReleased(KeyEvent e) { // 释放事件 sendOrder(e);
+		 *           }
+		 * 
+		 * @Override public void keyTyped(KeyEvent e) { // 键入事件（按下，再释放）
+		 *           sendOrder(e); } });
+		 */
 		try {
 
 			ServerSocket receive = new ServerSocket(9999);
