@@ -10,7 +10,7 @@ import javax.swing.ImageIcon;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 
-public class UIReceiveThread extends Thread {
+public class ServerThread extends Thread {
 	final String configPath = "src/com/lxl/config/config.properties";
 	Socket socket = null;
 	static Dimension d = Toolkit.getDefaultToolkit().getScreenSize();
@@ -22,7 +22,7 @@ public class UIReceiveThread extends Thread {
 		controllerUI.add(label);
 		controllerUI.setVisible(true);
 	}
-	public UIReceiveThread(Socket socket) {
+	public ServerThread(Socket socket) {
 		this.socket = socket;
 	}
 

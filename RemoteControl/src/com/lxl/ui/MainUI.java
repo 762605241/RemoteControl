@@ -11,6 +11,7 @@ import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
+import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
@@ -18,10 +19,13 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.UnknownHostException;
@@ -35,7 +39,7 @@ import javax.swing.JLabel;
 import javax.swing.JTextField;
 
 public class MainUI extends JFrame {
-
+	private boolean isConnect = false;
 	// 远程主机ID标识
 	private JTextField remoteID;
 	// 本机ID标识
@@ -106,12 +110,12 @@ public class MainUI extends JFrame {
 		JButton set = new JButton("\u8BBE\u7F6E");
 		set.setBounds(253, 208, 93, 23);
 		getContentPane().add(set);
-		
+
 		passwd = new JTextField();
 		passwd.setBounds(191, 113, 120, 21);
 		getContentPane().add(passwd);
 		passwd.setColumns(10);
-		
+
 		JLabel label = new JLabel("密码");
 		label.setBounds(39, 116, 54, 15);
 		getContentPane().add(label);
@@ -120,23 +124,6 @@ public class MainUI extends JFrame {
 		initMainUIData();
 		// 绑定控件事件
 		bind();
-	}
-
-	private static void startLocalServer() {
-		try {
-			ServerSocket server = new ServerSocket(8888);
-			Socket socket = null;
-			System.out.println("服务器启动");
-			// 开启两个线程，1输出鼠标键盘时间、2输出页面
-			while (true) {
-				socket = server.accept();
-				System.out.println("已连接" + socket.getInetAddress().getHostAddress());
-				ServerThread clientService = new ServerThread(socket);
-				clientService.start();
-			}
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
 	}
 
 	private void bind() {
@@ -171,86 +158,6 @@ public class MainUI extends JFrame {
 		return a;
 	}
 
-	private void tryToConnect() {
-		Dimension d = Toolkit.getDefaultToolkit().getScreenSize();
-		Robot robot = null;
-		ImageIcon img = null;
-		Socket socket = null;
-		try {
-			// 开启两个线程 1接收鼠标事件 2接受键盘事件
-			while (true) {
-				socket = new Socket(getRemoteID().getText(), 8888);
-				robot = new Robot();
-				img = new ImageIcon(robot.createScreenCapture(new Rectangle(0, 0, (int) d.getWidth(), (int) d.getHeight())));// 截取屏幕
-				ObjectOutputStream oos = new ObjectOutputStream(socket.getOutputStream());
-				oos.writeObject(img);
-				oos.flush();
-			}
-		} catch (AWTException e) {
-			e.printStackTrace();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-
-	
-//		// 1、获取验证码、设置密码、用户名及密码
-//		String strCode = code.getText();
-//		File f = new File(configPath);
-//		String setPassword = null;
-//		Properties prop = new Properties();
-//		InputStream is = null;
-//		try {
-//			is = new BufferedInputStream(new FileInputStream(f));
-//			prop.load(is);
-//			setPassword = prop.getProperty("setPassword");
-//		} catch (FileNotFoundException e) {
-//			e.printStackTrace();
-//		} catch (IOException e) {
-//			e.printStackTrace();
-//		} finally {
-//			if (is != null) {
-//				try {
-//					is.close();
-//				} catch (IOException e) {
-//					e.printStackTrace();
-//				}
-//			}
-//		}
-//		String strRemoteID = remoteID.getText();
-//		String pw = null;
-//		BufferedWriter bw = null;
-//		Socket s = null;
-//		if (strRemoteID != null && !strRemoteID.equals("")) {
-//			pw = (setPassword != null && !setPassword.equals("")) ? setPassword : strCode;
-//			// 启动客户端 尝试连接
-//			try {
-//				s = new Socket(strRemoteID, 8888);
-//				bw = new BufferedWriter(new OutputStreamWriter(s.getOutputStream()));
-//				bw.write("confirm:" + pw);
-//				bw.flush();
-//			} catch (UnknownHostException e) {
-//				e.printStackTrace();
-//			} catch (IOException e) {
-//				e.printStackTrace();
-//			} finally {
-//				if (bw != null) {
-//					try {
-//						bw.close();
-//					} catch (IOException e) {
-//						e.printStackTrace();
-//					}
-//				}
-//				if (s != null) {
-//					try {
-//						s.close();
-//					} catch (IOException e) {
-//						e.printStackTrace();
-//					}
-//				}
-//			}
-//		}
-	}
-
 	private ActionListener refreshListener() {
 		ActionListener a = new ActionListener() {
 
@@ -263,7 +170,6 @@ public class MainUI extends JFrame {
 	}
 
 	private void initMainUIData() {
-
 
 		File f = new File(configPath);
 		Properties prop = new Properties();
@@ -325,7 +231,7 @@ public class MainUI extends JFrame {
 				} catch (IOException e) {
 					e.printStackTrace();
 				}
-			}			
+			}
 			if (is != null) {
 				try {
 					is.close();
@@ -388,7 +294,96 @@ public class MainUI extends JFrame {
 	public static void main(String[] args) {
 		MainUI mainUI = new MainUI();
 		mainUI.setVisible(true);
-		// 开启本机服务器
-		startLocalServer();
+		// 开启接收服务
+		new Thread(new Runnable() {
+			
+			@Override
+			public void run() {
+				mainUI.startReceiveUIServer();
+			}
+		}).start();
+		new Thread(new Runnable() {
+			ServerSocket isStartSendServer = null;
+			Socket socket = null;
+			BufferedReader br = null;
+			@Override
+			public void run() {
+				try {
+					isStartSendServer = new ServerSocket(7777);
+					socket = isStartSendServer.accept();
+					System.out.println("申请成功，即将发送数据数据");
+					br = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+					String[] address = br.readLine().split(":");
+					mainUI.startSendUIServer(new Socket(address[0], Integer.parseInt(address[1])));
+				} catch (IOException e) {
+					e.printStackTrace();
+				} 
+			}
+		}).start();
+	}
+	private void tryToConnect() {
+		BufferedWriter bw = null;
+		Socket s = null;
+		try {
+			s = new Socket(getRemoteID().getText(), 7777);
+			bw = new BufferedWriter(new OutputStreamWriter(s.getOutputStream()));
+			bw.write(s.getLocalAddress().getHostAddress() + ":" + s.getPort());
+			bw.flush();
+		} catch (UnknownHostException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		} finally {
+			if (bw != null) {
+				try {
+					bw.close();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			}
+			if (s != null) {
+				try {
+					s.close();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			}
+		}
+	}
+	private void startSendUIServer(Socket socket) {
+		Dimension d = Toolkit.getDefaultToolkit().getScreenSize();
+		Robot robot = null;
+		ImageIcon img = null;
+		ObjectOutputStream oos = null;
+		try {
+			// 开启两个线程 1接收鼠标事件 2接受键盘事件
+			while (true) {
+				robot = new Robot();
+				img = new ImageIcon(robot.createScreenCapture(new Rectangle(0, 0, (int) d.getWidth(), (int) d.getHeight())));// 截取屏幕
+				oos = new ObjectOutputStream(socket.getOutputStream());
+				oos.writeObject(img);
+				oos.flush();
+			}
+		} catch (AWTException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+	private void startReceiveUIServer() {
+		ServerSocket receiveUIServer = null;
+		Socket receiveSocket = null;
+		try {
+			receiveUIServer = new ServerSocket(9999);
+			while (true) {
+				receiveSocket = receiveUIServer.accept();
+				System.out.println("接收数据");
+				UIReceiveThread receiveThread = new UIReceiveThread(receiveSocket);
+				receiveThread.start();
+			}
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+
 	}
 }
